@@ -5,7 +5,7 @@ import {compile} from './engine/model.js'
 import {findHint,TIER_NAMES} from './engine/logic.js'
 import {MODE_BY_ID,DIFFICULTY_NAMES} from './engine/modes.js'
 import {saveGame} from './storage.js'
-import {formatTime,openSheet,closeSheet,escapeHtml} from './ui.js'
+import {formatTime,openSheet,closeSheet,confirmSheet,escapeHtml} from './ui.js'
 
 export function newGameState(puzzle,daily=null){
   const cellCount=puzzle.size*puzzle.size
@@ -28,7 +28,7 @@ export function gameProgress(game){
 }
 
 export function mountGame(root,game,options){
-  const {settings,onExit,onSolved,onNewPuzzle}=options
+  const {settings,onExit,onSolved,onNewPuzzle,onChangeLevel}=options
   const puzzle=game.puzzle
   const size=puzzle.size
   const cellCount=size*size
@@ -43,38 +43,60 @@ export function mountGame(root,game,options){
   let lastTick=performance.now()
   let destroyed=false
 
+  const latin=puzzle.mode==='calcudoku'||puzzle.mode==='futoshiki'||puzzle.mode==='skyscrapers'
+  const title=`${mode.name}${latin?` ${size}×${size}`:''}`
+  const levelWord=game.daily?(game.daily.kind==='classic'?'Daily':'Daily variant'):'Difficulty'
+  const firstRow=size<=5?size:Math.ceil(size/2)
+  const padKey=(digit)=>`<button class="pad-key" data-digit="${digit}"><span class="pad-digit">${digit}</span><span class="pad-left"></span></button>`
+  const padRows=[[...Array(firstRow).keys()].map((index)=>index+1),[...Array(size-firstRow).keys()].map((index)=>index+firstRow+1)].filter((row)=>row.length)
+
   root.innerHTML=`
     <section class="game">
       <header class="game-top">
-        <button class="icon-button" data-action="back" aria-label="Back">${ICONS.back}</button>
-        <button class="game-title" data-action="rules">
-          <span class="game-mode">${escapeHtml(mode.name)}${puzzle.mode==='calcudoku'||puzzle.mode==='futoshiki'||puzzle.mode==='skyscrapers'?` ${size}×${size}`:''}</span>
-          <span class="game-level">${game.daily?(game.daily.kind==='classic'?'Daily':'Daily variant')+' · ':''}Level ${puzzle.difficulty} · ${DIFFICULTY_NAMES[puzzle.difficulty]}</span>
-        </button>
-        <button class="timer" data-action="pause" aria-label="Pause"><span class="timer-text"></span>${ICONS.pause}</button>
-        <button class="icon-button" data-action="menu" aria-label="More">${ICONS.more}</button>
+        <button class="hud-button" data-action="back" aria-label="Home">${ICONS.home}</button>
+        <div class="game-center">
+          <button class="game-title" data-action="rules">${escapeHtml(title)}</button>
+          <button class="timer" data-action="pause" aria-label="Pause"></button>
+        </div>
+        <button class="hud-button" data-action="menu" aria-label="Puzzle settings">${ICONS.gear}</button>
       </header>
-      <div class="game-stats-line"><span class="mistake-count"></span><span class="hint-count"></span></div>
+      <div class="level-bar">
+        <div class="level-info">
+          <span class="level-word">${levelWord}</span>
+          <span class="level-star"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg><b>${puzzle.difficulty}</b></span>
+          <span class="level-name">${DIFFICULTY_NAMES[puzzle.difficulty]}</span>
+        </div>
+        <button class="level-change" data-action="change-level">Change difficulty</button>
+      </div>
       <div class="board-wrap"><div class="board-holder"></div>
         <div class="pause-cover" hidden><button class="primary" data-action="resume">${ICONS.play}<span>Resume</span></button></div>
       </div>
       <div class="game-message" aria-live="polite"></div>
-      <div class="tools">
-        <button class="tool" data-action="undo">${ICONS.undo}<span>Undo</span></button>
-        <button class="tool" data-action="erase">${ICONS.erase}<span>Erase</span></button>
-        <button class="tool tool-notes" data-action="notes">${ICONS.notes}<span>Notes</span><b class="notes-pill">OFF</b></button>
-        <button class="tool" data-action="hint">${ICONS.hint}<span>Hint</span></button>
+      <div class="game-stats-line"><span class="mistake-count"></span><span class="hint-count"></span></div>
+      <div class="pad">${padRows.map((row)=>`<div class="pad-row">${row.map(padKey).join('')}</div>`).join('')}</div>
+      <div class="dock">
+        <div class="dock-row">
+          <button class="round-tool" data-action="undo" aria-label="Undo">${ICONS.undo}<span>Undo</span></button>
+          <button class="notes-toggle" data-action="notes" role="switch" aria-checked="false" aria-label="Pencil notes">
+            <span class="toggle-track"><span class="toggle-word">NOTES</span></span><span class="toggle-knob">${ICONS.notes}</span>
+          </button>
+          <button class="round-tool" data-action="erase" aria-label="Erase">${ICONS.erase}<span>Erase</span></button>
+        </div>
+        <div class="dock-row dock-bottom">
+          <button class="round-tool" data-action="reset" aria-label="Reset puzzle">${ICONS.reset}<span>Reset</span></button>
+          <button class="hint-pill" data-action="hint">${ICONS.hint}<b>Hint</b><span class="hint-badge"></span></button>
+          <button class="round-tool" data-action="rules" aria-label="Rules">${ICONS.help}<span>Rules</span></button>
+        </div>
       </div>
-      <div class="pad pad-${size}"></div>
     </section>`
 
   const elements={
-    timer:root.querySelector('.timer-text'),timerButton:root.querySelector('.timer'),
-    mistakes:root.querySelector('.mistake-count'),hints:root.querySelector('.hint-count'),
+    timerButton:root.querySelector('.timer'),
+    mistakes:root.querySelector('.mistake-count'),hints:root.querySelector('.hint-count'),hintBadge:root.querySelector('.hint-badge'),
     message:root.querySelector('.game-message'),pad:root.querySelector('.pad'),
-    notesButton:root.querySelector('.tool-notes'),pauseCover:root.querySelector('.pause-cover')
+    notesButton:root.querySelector('.notes-toggle'),pauseCover:root.querySelector('.pause-cover')
   }
-  elements.pad.innerHTML=Array.from({length:size},(unused,index)=>`<button class="pad-key" data-digit="${index+1}"><span class="pad-digit">${index+1}</span><span class="pad-left"></span></button>`).join('')
+  const padKeys=[...root.querySelectorAll('.pad-key')]
 
   const board=createBoard(root.querySelector('.board-holder'),(cell)=>{
     if(paused||game.solved)return
@@ -91,9 +113,9 @@ export function mountGame(root,game,options){
     const style=getComputedStyle(gameElement)
     let used=parseFloat(style.paddingTop)+parseFloat(style.paddingBottom)
     for(const child of gameElement.children){
-      if(child!==boardWrap&&child!==elements.message)used+=child.offsetHeight
+      if(child!==boardWrap&&child!==elements.message)used+=child.offsetHeight+parseFloat(getComputedStyle(child).marginTop)+parseFloat(getComputedStyle(child).marginBottom)
     }
-    const availableHeight=gameElement.clientHeight-used-44
+    const availableHeight=gameElement.clientHeight-used-28
     const availableWidth=boardWrap.clientWidth
     const boardRatio=board.ratio()
     let width=availableWidth,height=width/boardRatio
@@ -148,7 +170,7 @@ export function mountGame(root,game,options){
       if(value&&value===puzzle.solution[cell])counts[value]++
     }
     const selectedNotes=selected>=0&&!game.values[selected]?game.notes[selected]:0
-    for(const key of elements.pad.children){
+    for(const key of padKeys){
       const digit=Number(key.dataset.digit)
       const left=size-counts[digit]
       key.querySelector('.pad-left').textContent=left>0?left:''
@@ -156,13 +178,14 @@ export function mountGame(root,game,options){
       key.classList.toggle('is-noted',notesMode&&!!(selectedNotes&(1<<digit)))
     }
     elements.notesButton.classList.toggle('is-on',notesMode)
-    elements.notesButton.querySelector('.notes-pill').textContent=notesMode?'ON':'OFF'
+    elements.notesButton.setAttribute('aria-checked',notesMode?'true':'false')
     elements.pad.classList.toggle('notes-mode',notesMode)
-    elements.mistakes.textContent=game.mistakes?`Mistakes: ${game.mistakes}`:''
-    elements.hints.textContent=game.hintsUsed?`Hints: ${game.hintsUsed}`:''
+    elements.mistakes.textContent=game.mistakes?`${game.mistakes} ${game.mistakes===1?'mistake':'mistakes'}`:''
+    elements.hints.textContent=game.hintsUsed?`${game.hintsUsed} ${game.hintsUsed===1?'hint':'hints'} used`:''
+    elements.hintBadge.textContent=game.hintsUsed?`×${game.hintsUsed}`:''
     elements.pauseCover.hidden=!paused
     elements.timerButton.classList.toggle('is-paused',paused)
-    elements.timerButton.innerHTML=`<span class="timer-text">${settings.showTimer?formatTime(game.elapsedMs):''}</span>${paused?ICONS.play:ICONS.pause}`
+    elements.timerButton.innerHTML=`${paused?ICONS.play:ICONS.pause}<span class="timer-text">${settings.showTimer?formatTime(game.elapsedMs):paused?'Paused':''}</span>`
     elements.timer=elements.timerButton.querySelector('.timer-text')
   }
 
@@ -326,6 +349,21 @@ export function mountGame(root,game,options){
     render()
   }
 
+  async function confirmReset(){
+    if(paused||game.solved)return
+    const touched=game.values.some((value,cell)=>value!==puzzle.givens[cell])||game.notes.some(Boolean)
+    if(!touched){showMessage('Nothing to reset yet.');return}
+    const sure=await confirmSheet({
+      title:'Reset this puzzle?',
+      text:'All your digits and notes will be cleared. The timer, mistakes and hints keep counting.',
+      confirmLabel:'Reset',danger:true
+    })
+    if(sure){
+      restart()
+      showMessage('Puzzle reset.')
+    }
+  }
+
   function checkSolved(){
     for(let cell=0;cell<cellCount;cell++)if(game.values[cell]!==puzzle.solution[cell])return
     game.solved=true
@@ -459,6 +497,8 @@ export function mountGame(root,game,options){
       case 'erase':erase();break
       case 'notes':notesMode=!notesMode;render();break
       case 'hint':hint();break
+      case 'reset':confirmReset();break
+      case 'change-level':tick();persist(true);onChangeLevel(game);break
       default:break
     }
   })

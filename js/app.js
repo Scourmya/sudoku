@@ -122,7 +122,7 @@ function renderPlay(){
     ${renderContinueCard()}
     <button class="daily-strip" data-action="goto-daily">
       ${ICONS.calendar}
-      <span><b>Today's daily</b><small>Classic level ${today.classic.difficulty}${todayRecord.classic?' · solved':''} · ${escapeHtml(MODE_BY_ID[today.variant.mode].name)}${todayRecord.variant?' · solved':''}</small></span>
+      <span><b>Today's daily</b><small>Classic level ${dailyLevelFor(localDateKey(),'classic')}${todayRecord.classic?' · solved':''} · ${escapeHtml(MODE_BY_ID[today.variant.mode].name)}${todayRecord.variant?' · solved':''}</small></span>
       ${ICONS.chevron}
     </button>
     ${CATEGORIES.map((category)=>`
@@ -213,6 +213,7 @@ async function startNewPuzzle(modeId,level,{skipConfirm=false}={}){
 }
 
 function startGame(puzzle,daily){
+  closeGame()
   const game=newGameState(puzzle,daily)
   recordStart(state.stats,puzzle.mode,puzzle.difficulty)
   saveGame(game)
@@ -232,6 +233,10 @@ function openGame(game){
       refreshTab()
     },
     onSolved:(solvedGame)=>onSolved(solvedGame),
+    onChangeLevel:(currentGame)=>{
+      if(currentGame.daily)openDailySheet(currentGame.daily.date,currentGame.daily.kind)
+      else openModeSheet(currentGame.puzzle.mode)
+    },
     onNewPuzzle:(currentGame)=>{
       if(currentGame.daily){
         closeGame()
@@ -305,17 +310,73 @@ function dailyFor(dateKey){
   }
 }
 
-async function playDaily(dateKey,kind){
-  const spec=dailyFor(dateKey)[kind]
+function dailyLevelFor(dateKey,kind){
+  const chosen=(state.settings.dailyLevel||{})[kind]
+  return chosen||dailyFor(dateKey)[kind].difficulty
+}
+
+function savedDaily(dateKey,kind){
   const saved=loadGame()
-  if(saved&&!saved.solved&&saved.daily&&saved.daily.date===dateKey&&saved.daily.kind===kind){
+  return saved&&!saved.solved&&saved.daily&&saved.daily.date===dateKey&&saved.daily.kind===kind?saved:null
+}
+
+function openDailySheet(dateKey,kind){
+  const spec=dailyFor(dateKey)[kind]
+  const mode=MODE_BY_ID[spec.mode]
+  let level=dailyLevelFor(dateKey,kind)
+  const solvedLevels=new Set(state.stats.history.filter((entry)=>entry.daily===kind&&entry.dailyDate===dateKey).map((entry)=>entry.difficulty))
+  const label=new Date(dateKey+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})
+  const sheet=openSheet(`
+    <div class="sheet-head">
+      <span class="mode-glyph big">${GLYPHS[spec.mode]}</span>
+      <div><h2>${kind==='classic'?'Daily Classic':`Daily ${escapeHtml(mode.name)}`}</h2><p class="subtle">${escapeHtml(label)}</p></div>
+    </div>
+    ${kind==='variant'?`<p class="sheet-rules">${escapeHtml(mode.rules)}</p>`:'<p class="sheet-rules">Pick a difficulty. Each level has its own puzzle for this day.</p>'}
+    <div class="level-grid"></div>
+    <div class="level-detail"></div>
+    <button class="primary wide" data-start></button>`)
+  const draw=()=>{
+    sheet.querySelector('.level-grid').innerHTML=Array.from({length:9},(unused,index)=>{
+      const value=index+1
+      return `<button class="level${value===level?' is-selected':''}" data-level="${value}">
+        <b>${value}</b><span>${DIFFICULTY_NAMES[value]}</span><small>${solvedLevels.has(value)?'solved ✓':value===spec.difficulty?'suggested':'&nbsp;'}</small>
+      </button>`
+    }).join('')
+    const sizeNote=LATIN_SIZES[spec.mode]?`${LATIN_SIZES[spec.mode][level]}×${LATIN_SIZES[spec.mode][level]} grid. `:''
+    sheet.querySelector('.level-detail').innerHTML=`
+      <p>${sizeNote}${LEVEL_NOTES[level]}</p>
+      <p class="subtle">${kind==='classic'?'Solving any level keeps your daily streak going.':'Solving it marks the day with a variant dot.'}</p>`
+    const resume=savedDaily(dateKey,kind)
+    sheet.querySelector('[data-start]').textContent=resume&&resume.puzzle.difficulty===level?`Continue level ${level}`:`Play level ${level}`
+  }
+  draw()
+  sheet.addEventListener('click',(event)=>{
+    const levelButton=event.target.closest('[data-level]')
+    if(levelButton){
+      level=Number(levelButton.dataset.level)
+      draw()
+      return
+    }
+    if(event.target.closest('[data-start]')){
+      state.settings.dailyLevel={...(state.settings.dailyLevel||{}),[kind]:level}
+      saveSettings(state.settings)
+      closeSheet(true)
+      playDaily(dateKey,kind,level)
+    }
+  })
+}
+
+async function playDaily(dateKey,kind,level=dailyLevelFor(dateKey,kind)){
+  const spec=dailyFor(dateKey)[kind]
+  const saved=savedDaily(dateKey,kind)
+  if(saved&&saved.puzzle.difficulty===level){
     openGame(saved)
     return
   }
   if(!(await confirmAbandon()))return
   showLoading(`Building the ${kind==='classic'?'daily classic':'daily '+MODE_BY_ID[spec.mode].name}…`)
   try{
-    const puzzle=await generate(spec.mode,spec.difficulty,spec.seed)
+    const puzzle=await generate(spec.mode,level,spec.seed)
     hideLoading()
     startGame(puzzle,{kind,date:dateKey})
   }catch(error){
@@ -349,6 +410,7 @@ function renderDaily(){
     </button>`)
   }
   const variantMode=MODE_BY_ID[today.variant.mode]
+  const classicLevel=dailyLevelFor(todayKey,'classic'),variantLevel=dailyLevelFor(todayKey,'variant')
   const savedGame=loadGame()
   const inProgress=(kind)=>savedGame&&!savedGame.solved&&savedGame.daily&&savedGame.daily.date===todayKey&&savedGame.daily.kind===kind
   const card=(kind,title,subtitle,glyph)=>{
@@ -371,10 +433,10 @@ function renderDaily(){
       <div class="streak-box"><b>${monthSolved}</b><small>this month</small></div>
     </div>
     <div class="daily-cards">
-      ${card('classic','Daily Classic',`Level ${today.classic.difficulty} · ${DIFFICULTY_NAMES[today.classic.difficulty]}`,GLYPHS.classic)}
-      ${card('variant',`Daily ${variantMode.name}`,`Level 5 · ${escapeHtml(variantMode.short)}`,GLYPHS[variantMode.id])}
+      ${card('classic','Daily Classic',`Level ${classicLevel} · ${DIFFICULTY_NAMES[classicLevel]}`,GLYPHS.classic)}
+      ${card('variant',`Daily ${variantMode.name}`,`Level ${variantLevel} · ${escapeHtml(variantMode.short)}`,GLYPHS[variantMode.id])}
     </div>
-    <p class="footnote">The classic gets harder through the week and peaks on Saturday. Solving it keeps your streak alive.</p>
+    <p class="footnote">Tap a card to pick its difficulty. The suggested classic level rises through the week, and solving the classic at any level keeps your streak alive.</p>
     <section class="calendar">
       <div class="calendar-head">
         <button class="icon-button" data-month="-1" aria-label="Previous month">${ICONS.back}</button>
@@ -394,14 +456,14 @@ function openDaySheet(dateKey){
   const sheet=openSheet(`
     <h2>${escapeHtml(label)}</h2>
     <div class="menu-list">
-      <button data-kind="classic">${GLYPHS.classic}<span>Classic · level ${spec.classic.difficulty}${record.classic?' · solved':''}</span></button>
-      <button data-kind="variant">${GLYPHS[spec.variant.mode]}<span>${escapeHtml(MODE_BY_ID[spec.variant.mode].name)} · level 5${record.variant?' · solved':''}</span></button>
+      <button data-kind="classic">${GLYPHS.classic}<span>Daily Classic${record.classic?' · solved':''}</span></button>
+      <button data-kind="variant">${GLYPHS[spec.variant.mode]}<span>Daily ${escapeHtml(MODE_BY_ID[spec.variant.mode].name)}${record.variant?' · solved':''}</span></button>
     </div>`)
   sheet.addEventListener('click',(event)=>{
     const button=event.target.closest('[data-kind]')
     if(!button)return
     closeSheet(true)
-    playDaily(dateKey,button.dataset.kind)
+    setTimeout(()=>openDailySheet(dateKey,button.dataset.kind),200)
   })
 }
 
@@ -575,7 +637,13 @@ async function onTabClick(event){
   const modeButton=target.closest('[data-mode]')
   if(modeButton){openModeSheet(modeButton.dataset.mode);return}
   const dailyButton=target.closest('[data-daily]')
-  if(dailyButton){playDaily(localDateKey(),dailyButton.dataset.daily);return}
+  if(dailyButton){
+    const kind=dailyButton.dataset.daily
+    const resume=savedDaily(localDateKey(),kind)
+    if(resume)openGame(resume)
+    else openDailySheet(localDateKey(),kind)
+    return
+  }
   const dayButton=target.closest('[data-day]')
   if(dayButton){openDaySheet(dayButton.dataset.day);return}
   const monthButton=target.closest('[data-month]')

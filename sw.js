@@ -1,12 +1,12 @@
 // offline cache: serve the app shell from cache, refresh it in the background
-const CACHE='sudoku-v2'
+const CACHE='sudoku-v3'
 const FILES=[
   './','index.html','manifest.webmanifest','css/style.css',
   'js/app.js','js/game.js','js/board.js','js/ui.js','js/icons.js','js/glyphs.js','js/storage.js',
   'js/generator-client.js','js/worker.js',
   'js/engine/bits.js','js/engine/rng.js','js/engine/units.js','js/engine/model.js','js/engine/solver.js',
   'js/engine/logic.js','js/engine/generate.js','js/engine/modes.js',
-  'icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png'
+  'icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png','fonts/nunito.woff2'
 ]
 
 self.addEventListener('install',(event)=>{

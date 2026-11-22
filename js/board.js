@@ -97,7 +97,7 @@ function edgeMid(first,second,size){
 function buildStatic(puzzle){
   const size=puzzle.size
   const width=size*CELL
-  const tint=[`<rect x="0" y="0" width="${width}" height="${width}" class="board-bg"/>`],deco=[],grid=[]
+  const tint=[`<rect x="0" y="0" width="${width}" height="${width}" class="board-bg"/>`],deco=[],grid=[],labels=[]
   const rules=puzzle.rules||{}
 
   if(rules.windoku){
@@ -157,13 +157,13 @@ function buildStatic(puzzle){
         }
         const anchor=cellBox(Math.min(...constraint.cells),size)
         const label=String(constraint.sum)
-        deco.push(`<text x="${anchor.x+8}" y="${anchor.y+23}" class="cage-label">${label}</text>`)
+        labels.push(`<text x="${anchor.x+8}" y="${anchor.y+23}" class="cage-label">${label}</text>`)
         break
       }
       case 'calc':{
         const anchor=cellBox(Math.min(...constraint.cells),size)
         const label=`${constraint.target}${OP_LABEL[constraint.op]}`
-        deco.push(`<text x="${anchor.x+8}" y="${anchor.y+24}" class="calc-label">${label}</text>`)
+        labels.push(`<text x="${anchor.x+8}" y="${anchor.y+24}" class="calc-label">${label}</text>`)
         break
       }
       default:break
@@ -222,17 +222,17 @@ function buildStatic(puzzle){
     outside.push(`<text x="${x}" y="${y}" class="outside-clue">${label}</text>`)
   }
 
-  return {tint:tint.join(''),deco:deco.join('')+marks.join(''),grid:grid.join('')+outside.join('')}
+  return {tint:tint.join(''),deco:deco.join('')+marks.join(''),grid:grid.join('')+outside.join(''),labels:labels.join('')}
 }
 
 export function createBoard(container,onCellTap){
   const svg=document.createElementNS(NS,'svg')
   svg.setAttribute('class','board')
-  svg.innerHTML='<g class="layer-tint"></g><g class="layer-highlight"></g><g class="layer-deco"></g><g class="layer-grid"></g><g class="layer-circles"></g><g class="layer-digits"></g><g class="layer-select"></g>'
+  svg.innerHTML='<g class="layer-tint"></g><g class="layer-highlight"></g><g class="layer-deco"></g><g class="layer-grid"></g><g class="layer-circles"></g><g class="layer-digits"></g><g class="layer-select"></g><g class="layer-labels"></g>'
   container.appendChild(svg)
   const layers={
     tint:svg.querySelector('.layer-tint'),highlight:svg.querySelector('.layer-highlight'),deco:svg.querySelector('.layer-deco'),
-    grid:svg.querySelector('.layer-grid'),circles:svg.querySelector('.layer-circles'),digits:svg.querySelector('.layer-digits'),select:svg.querySelector('.layer-select')
+    grid:svg.querySelector('.layer-grid'),circles:svg.querySelector('.layer-circles'),digits:svg.querySelector('.layer-digits'),select:svg.querySelector('.layer-select'),labels:svg.querySelector('.layer-labels')
   }
   let currentPuzzle=null
   let ratio=1
@@ -262,6 +262,7 @@ export function createBoard(container,onCellTap){
     layers.tint.innerHTML=parts.tint
     layers.deco.innerHTML=parts.deco
     layers.grid.innerHTML=parts.grid
+    layers.labels.innerHTML=parts.labels
   }
 
   function update(view){
@@ -287,8 +288,8 @@ export function createBoard(container,onCellTap){
       if(view.errors.has(cell)&&cell!==selected)fill='var(--hl-error)'
       if(fill)highlight.push(`<rect x="${box.x}" y="${box.y}" width="${CELL}" height="${CELL}" fill="${fill}"/>`)
       if(cell===view.hintCell)highlight.push(`<rect x="${box.x+4}" y="${box.y+4}" width="${CELL-8}" height="${CELL-8}" class="hint-pulse"/>`)
-      if(value&&view.highlightSame&&value===selectedValue){
-        circles.push(`<circle cx="${box.x+50}" cy="${box.y+50}" r="40" class="same-circle"/>`)
+      if(value&&view.highlightSame&&value===selectedValue&&cell!==selected){
+        circles.push(`<rect x="${box.x+9}" y="${box.y+9}" width="82" height="82" rx="24" class="same-ring"/>`)
       }
       if(value){
         const given=puzzle.givens[cell]>0
@@ -310,7 +311,7 @@ export function createBoard(container,onCellTap){
     layers.digits.innerHTML=view.hidden?'':digits.join('')
     if(selected>=0&&!view.hidden){
       const box=cellBox(selected,size)
-      layers.select.innerHTML=`<rect x="${box.x+2.5}" y="${box.y+2.5}" width="${CELL-5}" height="${CELL-5}" class="selection"/>`
+      layers.select.innerHTML=`<rect x="${box.x+8}" y="${box.y+8}" width="84" height="84" rx="24" class="selection"/>`
     }else{
       layers.select.innerHTML=''
     }

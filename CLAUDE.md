@@ -29,7 +29,14 @@ Personal Sudoku app for Itay's iPhone. It is a PWA (plain HTML/CSS/JS, no build 
   - `solver.js` queue-based propagation and backtracking (uniqueness checks)
   - `logic.js` human-style grader (tier 1 singles, 2 locked candidates, 3 pairs, 4 triples/X-Wing, 5 trial and error) and the hint finder
   - `generate.js` builders for each mode and the difficulty plan (PLAN table and per-mode SETTINGS)
-- `sw.js` offline cache, `manifest.webmanifest`, `icons/`
+- `sw.js` offline cache, `manifest.webmanifest`, `icons/`, `fonts/nunito.woff2` (OFL, license in `fonts/OFL.txt`)
+
+## Look and feel
+
+- The play screen copies the layout of the Daily Sudoku Together app (Itay sent a screenshot): home button, title with timer, settings gear on top; a difficulty bar with a star badge and "Change difficulty"; the board; round number keys in two rows; a dock with Undo, the pencil notes toggle and Erase, then Reset, Hint and Rules at the very bottom. Short screens (under 760px tall) switch to one row of keys and a smaller dock.
+- Matching digits get a cyan rounded-square ring (no square shading); the selected cell gets a light blue fill plus the ring.
+- Themes in Settings: Auto, Light (blue Daily Sudoku Together palette), Dark, Paper (warm beige with serif headings). All colors are CSS variables at the top of `css/style.css`.
+- Font is Nunito everywhere except Paper headings.
 
 ## Things to know before changing code
 
@@ -37,6 +44,7 @@ Personal Sudoku app for Itay's iPhone. It is a PWA (plain HTML/CSS/JS, no build 
 - Bump `CACHE` in `sw.js` whenever app files change, otherwise installed copies keep serving the old files. Add new files to its `FILES` list.
 - Difficulty: levels 1-4 are singles-only with fewer givens each level, 5/6/7 need tier 2/3/4, 8 and 9 need trial and error (9 needs a deeper search). Mini 6x6 and small Latin grids rarely reach high tiers, so their top levels come out easier.
 - Slowest generation is Non-Consecutive level 8 (around 4 s). Keep anything new under a few seconds in `node tests/engine.test.mjs`.
+- Daily puzzles: the player picks any level 1-9 for the Daily Classic and the Daily Variant (last pick saved in `settings.dailyLevel`). Each level is its own puzzle for that day. Solving the classic at any level counts for the streak.
 - Stats live only in localStorage on the phone. Keep the stats format backward compatible (`version:1`) or write a migration.
 
 ## Code style (Itay's preferences)
