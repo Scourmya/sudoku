@@ -47,7 +47,7 @@ function applyTheme(){
   if(theme==='auto')delete document.documentElement.dataset.theme
   else document.documentElement.dataset.theme=theme
   const dark=theme==='dark'||(theme==='auto'&&window.matchMedia('(prefers-color-scheme: dark)').matches)
-  document.querySelector('meta[name="theme-color"]').setAttribute('content',dark?'#13151b':'#f3efe6')
+  document.querySelector('meta[name="theme-color"]').setAttribute('content',dark?'#13151b':theme==='paper'?'#f3efe6':'#f3f6fb')
 }
 
 function renderShell(){
@@ -524,7 +524,8 @@ function renderSettings(){
     </section>
     <section class="group">
       <h2 class="section-title">Appearance</h2>
-      ${segmented('theme',[['auto','Auto'],['light','Light'],['dark','Dark']],settings.theme)}
+      ${segmented('theme',[['auto','Auto'],['light','Light'],['dark','Dark'],['paper','Paper']],settings.theme)}
+      <p class="footnote">Auto follows your phone's light or dark setting.</p>
     </section>
     <section class="group">
       <h2 class="section-title">Backup</h2>

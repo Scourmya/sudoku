@@ -228,11 +228,11 @@ function buildStatic(puzzle){
 export function createBoard(container,onCellTap){
   const svg=document.createElementNS(NS,'svg')
   svg.setAttribute('class','board')
-  svg.innerHTML='<g class="layer-tint"></g><g class="layer-highlight"></g><g class="layer-deco"></g><g class="layer-grid"></g><g class="layer-digits"></g><g class="layer-select"></g>'
+  svg.innerHTML='<g class="layer-tint"></g><g class="layer-highlight"></g><g class="layer-deco"></g><g class="layer-grid"></g><g class="layer-circles"></g><g class="layer-digits"></g><g class="layer-select"></g>'
   container.appendChild(svg)
   const layers={
     tint:svg.querySelector('.layer-tint'),highlight:svg.querySelector('.layer-highlight'),deco:svg.querySelector('.layer-deco'),
-    grid:svg.querySelector('.layer-grid'),digits:svg.querySelector('.layer-digits'),select:svg.querySelector('.layer-select')
+    grid:svg.querySelector('.layer-grid'),circles:svg.querySelector('.layer-circles'),digits:svg.querySelector('.layer-digits'),select:svg.querySelector('.layer-select')
   }
   let currentPuzzle=null
   let ratio=1
@@ -269,6 +269,7 @@ export function createBoard(container,onCellTap){
     if(!puzzle)return
     const size=puzzle.size
     const highlight=[]
+    const circles=[]
     const digits=[]
     const selected=view.selected
     const selectedValue=selected>=0?view.values[selected]:0
@@ -281,12 +282,14 @@ export function createBoard(container,onCellTap){
         continue
       }
       if(cell===selected)fill='var(--hl-selected)'
-      else if(view.highlightSame&&selectedValue&&value===selectedValue)fill='var(--hl-same)'
       else if(view.hintCells&&view.hintCells.has(cell))fill='var(--hl-hint-area)'
       else if(view.highlightPeers&&peerSet.has(cell))fill='var(--hl-peer)'
       if(view.errors.has(cell)&&cell!==selected)fill='var(--hl-error)'
       if(fill)highlight.push(`<rect x="${box.x}" y="${box.y}" width="${CELL}" height="${CELL}" fill="${fill}"/>`)
       if(cell===view.hintCell)highlight.push(`<rect x="${box.x+4}" y="${box.y+4}" width="${CELL-8}" height="${CELL-8}" class="hint-pulse"/>`)
+      if(value&&view.highlightSame&&value===selectedValue){
+        circles.push(`<circle cx="${box.x+50}" cy="${box.y+50}" r="40" class="same-circle"/>`)
+      }
       if(value){
         const given=puzzle.givens[cell]>0
         const kind=given?'given':view.errors.has(cell)?'wrong':'entry'
@@ -297,11 +300,13 @@ export function createBoard(container,onCellTap){
           const noteX=box.x+21+((note-1)%3)*29
           const noteY=box.y+24+Math.floor((note-1)/3)*28
           const sameNote=view.highlightSame&&selectedValue===note
+          if(sameNote)circles.push(`<circle cx="${noteX}" cy="${noteY}" r="14" class="note-circle"/>`)
           digits.push(`<text x="${noteX}" y="${noteY}" class="note${sameNote?' note-same':''}">${note}</text>`)
         }
       }
     }
     layers.highlight.innerHTML=highlight.join('')
+    layers.circles.innerHTML=view.hidden?'':circles.join('')
     layers.digits.innerHTML=view.hidden?'':digits.join('')
     if(selected>=0&&!view.hidden){
       const box=cellBox(selected,size)
