@@ -63,7 +63,7 @@ export function mountGame(root,game,options){
       <div class="level-bar">
         <div class="level-info">
           <span class="level-word">${levelWord}</span>
-          <span class="level-star"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg><b>${puzzle.difficulty}</b></span>
+          <span class="level-star"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="star-fill" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="star-stop-a"/><stop offset="1" class="star-stop-b"/></linearGradient></defs><path d="M12 2.6l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"/></svg><b>${puzzle.difficulty}</b></span>
           <span class="level-name">${DIFFICULTY_NAMES[puzzle.difficulty]}</span>
         </div>
         <button class="level-change" data-action="change-level">Change difficulty</button>
@@ -73,19 +73,18 @@ export function mountGame(root,game,options){
       </div>
       <div class="game-message" aria-live="polite"></div>
       <div class="game-stats-line"><span class="mistake-count"></span><span class="hint-count"></span></div>
-      <div class="pad">${padRows.map((row)=>`<div class="pad-row">${row.map(padKey).join('')}</div>`).join('')}</div>
-      <div class="dock">
-        <div class="dock-row">
-          <button class="round-tool" data-action="undo" aria-label="Undo">${ICONS.undo}<span>Undo</span></button>
-          <button class="notes-toggle" data-action="notes" role="switch" aria-checked="false" aria-label="Pencil notes">
-            <span class="toggle-track"><span class="toggle-word">NOTES</span></span><span class="toggle-knob">${ICONS.notes}</span>
-          </button>
-          <button class="round-tool" data-action="erase" aria-label="Erase">${ICONS.erase}<span>Erase</span></button>
-        </div>
-        <div class="dock-row dock-bottom">
-          <button class="round-tool" data-action="reset" aria-label="Reset puzzle">${ICONS.reset}<span>Reset</span></button>
+      <div class="controls">
+        <div class="pad">${padRows.map((row)=>`<div class="pad-row">${row.map(padKey).join('')}</div>`).join('')}</div>
+        <div class="dock">
+          <button class="round-tool tool-undo" data-action="undo" aria-label="Undo">${ICONS.undo}<span>Undo</span></button>
+          <div class="notes-wrap">
+            <button class="notes-toggle" data-action="notes" role="switch" aria-checked="false" aria-label="Pencil notes">
+              <span class="toggle-track"><span class="toggle-word">NOTES</span></span><span class="toggle-knob">${ICONS.notes}</span>
+            </button>
+            <button class="help-badge" data-action="rules" aria-label="Rules">?</button>
+          </div>
+          <button class="round-tool tool-erase" data-action="erase" aria-label="Erase">${ICONS.erase}<span>Erase</span></button>
           <button class="hint-pill" data-action="hint">${ICONS.hint}<b>Hint</b><span class="hint-badge"></span></button>
-          <button class="round-tool" data-action="rules" aria-label="Rules">${ICONS.help}<span>Rules</span></button>
         </div>
       </div>
     </section>`
@@ -466,7 +465,7 @@ export function mountGame(root,game,options){
       }
       else if(choice==='fill')fillNotes()
       else if(choice==='clear')clearNotes()
-      else if(choice==='restart')restart()
+      else if(choice==='restart')confirmReset()
       else if(choice==='new')onNewPuzzle(game)
       else if(choice==='reveal'){
         game.values=puzzle.solution.slice()
@@ -497,7 +496,6 @@ export function mountGame(root,game,options){
       case 'erase':erase();break
       case 'notes':notesMode=!notesMode;render();break
       case 'hint':hint();break
-      case 'reset':confirmReset();break
       case 'change-level':tick();persist(true);onChangeLevel(game);break
       default:break
     }

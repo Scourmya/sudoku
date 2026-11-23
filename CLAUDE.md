@@ -33,9 +33,10 @@ Personal Sudoku app for Itay's iPhone. It is a PWA (plain HTML/CSS/JS, no build 
 
 ## Look and feel
 
-- The play screen copies the layout of the Daily Sudoku Together app (Itay sent a screenshot): home button, title with timer, settings gear on top; a difficulty bar with a star badge and "Change difficulty"; the board; round number keys in two rows; a dock with Undo, the pencil notes toggle and Erase, then Reset, Hint and Rules at the very bottom. Short screens (under 760px tall) switch to one row of keys and a smaller dock.
-- Matching digits get a cyan rounded-square ring (no square shading); the selected cell gets a light blue fill plus the ring.
-- Themes in Settings: Auto, Light (blue Daily Sudoku Together palette), Dark, Paper (warm beige with serif headings). All colors are CSS variables at the top of `css/style.css`.
+- The play screen copies the layout of the Daily Sudoku Together app (Itay sent a screenshot): home button, title with timer, settings gear on top; a difficulty bar with a star badge and "Change difficulty"; the board. Below the board the controls follow a sketch Itay sent: number keys always in two rows (5 then 4) on a rounded panel, then a dock with Undo (left), the notes toggle (center, with a small pink "?" badge that opens Rules), Erase (right) and the Hint pill under the notes toggle. Reset lives in the gear menu ("Restart this puzzle", asks first). Short screens (under 760px, and again under 640px) shrink the keys and dock but keep two rows.
+- Matching digits get a purple rounded-square ring (no square shading); the selected cell gets a light periwinkle fill plus the ring.
+- Colors: modest pink, blue and purple with a clean minimal look (Itay's request). Blue is the main accent, purple for rings and the notes toggle, pink replaces yellow (hint, daily icons, `--warm`). The level star is a pink-to-purple gradient. Avoid yellow in Light and Dark.
+- Themes in Settings: Auto, Light, Dark (both in the pink/blue/purple palette), Paper (warm beige with serif headings). All colors are CSS variables at the top of `css/style.css`.
 - Font is Nunito everywhere except Paper headings.
 
 ## Things to know before changing code

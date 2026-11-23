@@ -1,5 +1,5 @@
 // offline cache: serve the app shell from cache, refresh it in the background
-const CACHE='sudoku-v3'
+const CACHE='sudoku-v4'
 const FILES=[
   './','index.html','manifest.webmanifest','css/style.css',
   'js/app.js','js/game.js','js/board.js','js/ui.js','js/icons.js','js/glyphs.js','js/storage.js',

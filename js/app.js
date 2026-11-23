@@ -47,7 +47,7 @@ function applyTheme(){
   if(theme==='auto')delete document.documentElement.dataset.theme
   else document.documentElement.dataset.theme=theme
   const dark=theme==='dark'||(theme==='auto'&&window.matchMedia('(prefers-color-scheme: dark)').matches)
-  document.querySelector('meta[name="theme-color"]').setAttribute('content',dark?'#13151b':theme==='paper'?'#f3efe6':'#f3f6fb')
+  document.querySelector('meta[name="theme-color"]').setAttribute('content',dark?'#14142a':theme==='paper'?'#f3efe6':'#f6f5fc')
 }
 
 function renderShell(){
